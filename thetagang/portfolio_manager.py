@@ -218,7 +218,7 @@ class PortfolioManager:
 
         try:
             wait_n_seconds(
-                lambda: any([util.isNan(t.midpoint()) for t in ticker_list]),
+                lambda: any(util.isNan(t.midpoint()) for t in ticker_list),
                 lambda remaining: self.ib.waitOnUpdate(timeout=remaining),
                 self.api_response_wait_time(),
             )
@@ -233,8 +233,7 @@ class PortfolioManager:
         return contract.strike >= ticker.marketPrice()
 
     def position_can_be_closed(self, position, table):
-        close_at_pnl = self.config["roll_when"]["close_at_pnl"]
-        if close_at_pnl:
+        if close_at_pnl := self.config["roll_when"]["close_at_pnl"]:
             pnl = position_pnl(position)
 
             if pnl > close_at_pnl:
@@ -656,10 +655,8 @@ class PortfolioManager:
             elif self.put_can_be_closed(put, table):
                 closeable_puts.append(put)
 
-        total_rollable_puts = math.floor(sum([abs(p.position) for p in rollable_puts]))
-        total_closeable_puts = math.floor(
-            sum([abs(p.position) for p in closeable_puts])
-        )
+        total_rollable_puts = math.floor(sum(abs(p.position) for p in rollable_puts))
+        total_closeable_puts = math.floor(sum(abs(p.position) for p in closeable_puts))
 
         text1 = f"[magenta]{total_rollable_puts} puts can be rolled"
         text2 = f"[magenta]{total_closeable_puts} puts can be closed"
@@ -689,11 +686,9 @@ class PortfolioManager:
             elif self.call_can_be_closed(c, table):
                 closeable_calls.append(c)
 
-        total_rollable_calls = math.floor(
-            sum([abs(p.position) for p in rollable_calls])
-        )
+        total_rollable_calls = math.floor(sum(abs(p.position) for p in rollable_calls))
         total_closeable_calls = math.floor(
-            sum([abs(p.position) for p in closeable_calls])
+            sum(abs(p.position) for p in closeable_calls)
         )
 
         text1 = f"[magenta]{total_rollable_calls} calls can be rolled"
@@ -735,11 +730,9 @@ class PortfolioManager:
             )
             stock_count = math.floor(
                 sum(
-                    [
-                        p.position
-                        for p in portfolio_positions[symbol]
-                        if isinstance(p.contract, Stock)
-                    ]
+                    p.position
+                    for p in portfolio_positions[symbol]
+                    if isinstance(p.contract, Stock)
                 )
             )
             strike_limit = math.ceil(
@@ -942,13 +935,13 @@ class PortfolioManager:
 
         total_buying_power = self.get_buying_power(account_summary)
 
-        stock_symbols = dict()
+        stock_symbols = {}
         for stock in stock_positions:
             symbol = stock.contract.symbol
             stock_symbols[symbol] = stock
 
-        targets = dict()
-        target_additional_quantity = dict()
+        targets = {}
+        target_additional_quantity = {}
 
         positions_summary_table = Table(title="Positions summary")
         positions_summary_table.add_column("Symbol")
@@ -1551,18 +1544,22 @@ class PortfolioManager:
             def vix_calls_should_be_closed() -> (
                 tuple[bool, Optional[Ticker], Optional[float]]
             ):
-                if "close_hedges_when_vix_exceeds" in self.config["vix_call_hedge"]:
-                    vix_contract = Index("VIX", "CBOE", "USD")
-                    self.ib.qualifyContracts(vix_contract)
-                    self.ib.reqMktData(vix_contract)
-                    vix_ticker = self.get_ticker_for(vix_contract)
-                    close_hedges_when_vix_exceeds = self.config["vix_call_hedge"][
-                        "close_hedges_when_vix_exceeds"
-                    ]
-                    if vix_ticker.marketPrice() > close_hedges_when_vix_exceeds:
-                        return (True, vix_ticker, close_hedges_when_vix_exceeds)
-                    return (False, vix_ticker, close_hedges_when_vix_exceeds)
-                return (False, None, None)
+                if (
+                    "close_hedges_when_vix_exceeds"
+                    not in self.config["vix_call_hedge"]
+                ):
+                    return (False, None, None)
+
+                vix_contract = Index("VIX", "CBOE", "USD")
+                self.ib.qualifyContracts(vix_contract)
+                self.ib.reqMktData(vix_contract)
+                vix_ticker = self.get_ticker_for(vix_contract)
+                close_hedges_when_vix_exceeds = self.config["vix_call_hedge"][
+                    "close_hedges_when_vix_exceeds"
+                ]
+                if vix_ticker.marketPrice() > close_hedges_when_vix_exceeds:
+                    return (True, vix_ticker, close_hedges_when_vix_exceeds)
+                return (False, vix_ticker, close_hedges_when_vix_exceeds)
 
             with console.status(
                 "[bold blue_violet]Checking on our VIX call hedge..."
@@ -1798,7 +1795,7 @@ class PortfolioManager:
                             for p in portfolio_positions[symbol]
                             if isinstance(p.contract, Stock)
                         ]
-                        position = positions[0] if len(positions) > 0 else 0
+                        position = positions[0] if positions else 0
                         qty = min([max([-position, qty]), 0])
                         # if for some reason the qty is zero, do nothing
                         if qty == 0:
@@ -1862,7 +1859,7 @@ class PortfolioManager:
             if trade
         ]
 
-        if len(self.trades) > 0:
+        if self.trades:
             table = Table(
                 title="Orders submitted", show_lines=True, box=box.MINIMAL_HEAVY_HEAD
             )
@@ -1892,12 +1889,10 @@ class PortfolioManager:
     def adjust_prices(self):
         if (
             any(
-                [
-                    not self.config["symbols"][symbol].get(
-                        "adjust_price_after_delay", False
-                    )
-                    for symbol in self.config["symbols"]
-                ]
+                not self.config["symbols"][symbol].get(
+                    "adjust_price_after_delay", False
+                )
+                for symbol in self.config["symbols"]
             )
             or len(self.trades) == 0
         ):
@@ -1964,16 +1959,14 @@ class PortfolioManager:
 
     def wait_for_pending_orders(self):
         with console.status(
-            f"[bold blue_violet]Waiting for {len(self.trades)} orders to submit..."
-        ) as _status:
+                f"[bold blue_violet]Waiting for {len(self.trades)} orders to submit..."
+            ) as _status:
             # Wait for pending orders
             wait_n_seconds(
                 lambda: any(
-                    [
-                        trade.orderStatus.status in ["PendingSubmit", "PreSubmitted"]
-                        for trade in self.trades
-                        if trade
-                    ]
+                    trade.orderStatus.status in ["PendingSubmit", "PreSubmitted"]
+                    for trade in self.trades
+                    if trade
                 ),
                 lambda remaining: self.ib.waitOnUpdate(timeout=remaining),
                 self.api_response_wait_time(),

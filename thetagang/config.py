@@ -30,8 +30,8 @@ def normalize_config(config):
         del config["target"]["maximum_new_contracts"]
 
     # xor: should have weight OR parts, but not both
-    if any(["weight" in s for s in config["symbols"].values()]) == any(
-        ["parts" in s for s in config["symbols"].values()]
+    if any("weight" in s for s in config["symbols"].values()) == any(
+        "parts" in s for s in config["symbols"].values()
     ):
         raise RuntimeError(
             "ERROR: all symbols should have either a weight or parts specified, but parts and weights cannot be mixed."
@@ -39,7 +39,7 @@ def normalize_config(config):
 
     if "parts" in list(config["symbols"].values())[0]:
         # If using "parts" instead of "weight", convert parts into weights
-        total_parts = float(sum([s["parts"] for s in config["symbols"].values()]))
+        total_parts = float(sum(s["parts"] for s in config["symbols"].values()))
         for k in config["symbols"].keys():
             config["symbols"][k]["weight"] = config["symbols"][k]["parts"] / total_parts
         for s in config["symbols"].values():
@@ -77,17 +77,19 @@ def validate_config(config):
             "account": {
                 "number": And(str, len),
                 "cancel_orders": bool,
-                "margin_usage": And(float, lambda n: 0 <= n),
+                "margin_usage": And(float, lambda n: n >= 0),
                 "market_data_type": And(int, lambda n: 1 <= n <= 4),
             },
             "orders": {
                 Optional("exchange"): And(str, len),
                 Optional("algo"): algo_settings,
-                Optional("price_update_delay"): And([int], lambda p: len(p) == 2),
+                Optional("price_update_delay"): And(
+                    [int], lambda p: len(p) == 2
+                ),
             },
             "option_chains": {
-                "expirations": And(int, lambda n: 1 <= n),
-                "strikes": And(int, lambda n: 1 <= n),
+                "expirations": And(int, lambda n: n >= 1),
+                "strikes": And(int, lambda n: n >= 1),
             },
             Optional("write_when"): {
                 Optional("calls"): {
@@ -100,10 +102,10 @@ def validate_config(config):
             },
             "roll_when": {
                 "pnl": And(float, lambda n: 0 <= n <= 1),
-                "dte": And(int, lambda n: 0 <= n),
+                "dte": And(int, lambda n: n >= 0),
                 "min_pnl": float,
                 Optional("close_at_pnl"): float,
-                Optional("max_dte"): And(int, lambda n: 1 <= n),
+                Optional("max_dte"): And(int, lambda n: n >= 1),
                 Optional("calls"): {
                     Optional("itm"): bool,
                     Optional("credit_only"): bool,
@@ -116,13 +118,13 @@ def validate_config(config):
                 },
             },
             "target": {
-                "dte": And(int, lambda n: 0 <= n),
+                "dte": And(int, lambda n: n >= 0),
                 "delta": And(float, lambda n: 0 <= n <= 1),
-                Optional("maximum_new_contracts"): And(int, lambda n: 1 <= n),
+                Optional("maximum_new_contracts"): And(int, lambda n: n >= 1),
                 Optional("maximum_new_contracts_percent"): And(
                     float, lambda n: 0 <= n <= 1
                 ),
-                "minimum_open_interest": And(int, lambda n: 0 <= n),
+                "minimum_open_interest": And(int, lambda n: n >= 0),
                 Optional("calls"): {
                     Optional("delta"): And(float, lambda n: 0 <= n <= 1),
                 },
@@ -134,19 +136,27 @@ def validate_config(config):
                 object: {
                     Or("weight", "parts", only_one=True): And(
                         Or(float, int),
-                        lambda n: 0 <= n <= 1 if isinstance(n, float) else n > 0,
+                        lambda n: 0 <= n <= 1
+                        if isinstance(n, float)
+                        else n > 0,
                     ),
                     Optional("primary_exchange"): And(str, len),
                     Optional("delta"): And(float, lambda n: 0 <= n <= 1),
-                    Optional("write_threshold"): And(float, lambda n: 0 <= n <= 1),
+                    Optional("write_threshold"): And(
+                        float, lambda n: 0 <= n <= 1
+                    ),
                     Optional("calls"): {
                         Optional("delta"): And(float, lambda n: 0 <= n <= 1),
-                        Optional("write_threshold"): And(float, lambda n: 0 <= n <= 1),
+                        Optional("write_threshold"): And(
+                            float, lambda n: 0 <= n <= 1
+                        ),
                         Optional("strike_limit"): And(float, lambda n: n > 0),
                     },
                     Optional("puts"): {
                         Optional("delta"): And(float, lambda n: 0 <= n <= 1),
-                        Optional("write_threshold"): And(float, lambda n: 0 <= n <= 1),
+                        Optional("write_threshold"): And(
+                            float, lambda n: 0 <= n <= 1
+                        ),
                         Optional("strike_limit"): And(float, lambda n: n > 0),
                     },
                     Optional("adjust_price_after_delay"): bool,
@@ -221,5 +231,5 @@ def validate_config(config):
     assert len(config["symbols"]) > 0
 
     assert math.isclose(
-        1, sum([s["weight"] for s in config["symbols"].values()]), rel_tol=1e-5
+        1, sum(s["weight"] for s in config["symbols"].values()), rel_tol=1e-5
     )

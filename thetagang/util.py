@@ -8,14 +8,11 @@ from thetagang.options import option_dte
 
 
 def account_summary_to_dict(account_summary):
-    d = dict()
-    for s in account_summary:
-        d[s.tag] = s
-    return d
+    return {s.tag: s for s in account_summary}
 
 
 def portfolio_positions_to_dict(portfolio_positions):
-    d = dict()
+    d = {}
     for p in portfolio_positions:
         symbol = p.contract.symbol
         if symbol not in d:
@@ -32,13 +29,11 @@ def count_short_option_positions(symbol, portfolio_positions, right):
     if symbol in portfolio_positions:
         return math.floor(
             -sum(
-                [
-                    p.position
-                    for p in portfolio_positions[symbol]
-                    if isinstance(p.contract, Option)
-                    and p.contract.right.upper().startswith(right.upper())
-                    and p.position < 0
-                ]
+                p.position
+                for p in portfolio_positions[symbol]
+                if isinstance(p.contract, Option)
+                and p.contract.right.upper().startswith(right.upper())
+                and p.position < 0
             )
         )
 
@@ -49,13 +44,11 @@ def count_long_option_positions(symbol, portfolio_positions, right):
     if symbol in portfolio_positions:
         return math.floor(
             sum(
-                [
-                    p.position
-                    for p in portfolio_positions[symbol]
-                    if isinstance(p.contract, Option)
-                    and p.contract.right.upper().startswith(right.upper())
-                    and p.position > 0
-                ]
+                p.position
+                for p in portfolio_positions[symbol]
+                if isinstance(p.contract, Option)
+                and p.contract.right.upper().startswith(right.upper())
+                and p.position > 0
             )
         )
 
@@ -66,17 +59,15 @@ def net_option_positions(symbol, portfolio_positions, right, ignore_zero_dte=Fal
     if symbol in portfolio_positions:
         return math.floor(
             sum(
-                [
-                    p.position
-                    for p in portfolio_positions[symbol]
-                    if isinstance(p.contract, Option)
-                    and p.contract.right.upper().startswith(right.upper())
-                    and option_dte(p.contract.lastTradeDateOrContractMonth) >= 0
-                    and (
-                        not ignore_zero_dte
-                        or option_dte(p.contract.lastTradeDateOrContractMonth) > 0
-                    )
-                ]
+                p.position
+                for p in portfolio_positions[symbol]
+                if isinstance(p.contract, Option)
+                and p.contract.right.upper().startswith(right.upper())
+                and option_dte(p.contract.lastTradeDateOrContractMonth) >= 0
+                and (
+                    not ignore_zero_dte
+                    or option_dte(p.contract.lastTradeDateOrContractMonth) > 0
+                )
             )
         )
 
