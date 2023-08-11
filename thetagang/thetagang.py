@@ -217,7 +217,11 @@ def start(config_path, without_ibc=False):
         )
     assert (
         round(
-            sum([config["symbols"][s]["weight"] for s in config["symbols"].keys()]), 5
+            sum(
+                config["symbols"][s]["weight"]
+                for s in config["symbols"].keys()
+            ),
+            5,
         )
         == 1.00000
     )

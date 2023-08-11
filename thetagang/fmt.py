@@ -1,7 +1,5 @@
 def redgreen(value):
-    if value >= 0:
-        return "green"
-    return "red"
+    return "green" if value >= 0 else "red"
 
 
 def dfmt(amount, precision=2):
